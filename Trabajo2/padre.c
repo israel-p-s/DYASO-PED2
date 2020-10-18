@@ -77,6 +77,9 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    //Crear array para la memoria compartida
+    int *arrayLista = (int *)shmat (lista, (char *)0, 0);
+
     //Crear semáforo
     sem = semget(clave, 1, IPC_CREAT | 0600);
     if(sem == -1) {
@@ -93,15 +96,31 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    //Convertir la barrera a char para que se pueda pasar a los hijos
+    char barrera0[10], barrera1[10];
+    sprintf(barrera0, "%d", barrera[0]);
+    sprintf(barrera1, "%d", barrera[1]);
+
     //Crear N hijos
     for(int i = 0; i < numProcesos; i++) {
         int hijo;
         hijo = fork();
         if(hijo < 0) {
-            perror("Error al crear un hijo");
+            perror("Error al crear hijo");
             exit(1);
         } else if(hijo == 0) {
-
+            char *info = {argv[0], argv[1], barrera0, barrera1, NULL};
+            execvp("./Trabajo2/HIJO", info);
+            exit(0);
         }
     }
+
+    //Esperamos 100 milisegundos por hijo creado para que todo esté listo para el combate
+    for(int i = 0; i < numProcesos; i++) {
+        usleep(100000);
+    }
+
+    
+
+
 }
