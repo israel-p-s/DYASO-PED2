@@ -13,7 +13,7 @@
 //FUNCIONES PARA EL SEMÁFORO
 //Iniciar semáforo
 void iniciarSem(int idSem, int valor) {
-    if(semctl(idSem, 0, SETALL, valor) == -1) {
+    if(semctl(idSem, 0, SETVAL, valor) == -1) {
         perror("Error al iniciar el semáforo");
         exit(1);
     }
@@ -45,7 +45,8 @@ void cerrarSem(int idSem) {
     }
 }
 
-int main(int argc, char *argv[]) {
+//MÉTODO MAIN
+void main(int argc, char *argv[]) {
 
     //VARIABLES
     key_t clave;
@@ -53,9 +54,8 @@ int main(int argc, char *argv[]) {
     int lista;
     int numProcesos = strtol(argv[1], NULL, 10);
     int sem;
-    int barrera[2];
+    int barrera[4];
 
-    //ACCIONES PREVIAS
     //Crear clave asociada al ejecutable
     clave = ftok(argv[0], 'X');
     if(clave == -1) {
@@ -69,6 +69,12 @@ int main(int argc, char *argv[]) {
         perror("Error al crear la cola de mensajes");
         exit(1);
     }
+
+    //Crear la estructura de mensaje que será enviado
+    struct {
+        int pid;
+        char estado[4];
+    } mensaje;
     
     //Crear región de memoria compartida
     lista = shmget(clave, numProcesos*sizeof(int), IPC_CREAT | 0600);
@@ -96,7 +102,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    //Convertir la barrera a char para que se pueda pasar a los hijos
+    //Convertir la tubería a char para que se pueda pasar a los hijos
     char barrera0[10], barrera1[10];
     sprintf(barrera0, "%d", barrera[0]);
     sprintf(barrera1, "%d", barrera[1]);
@@ -105,22 +111,36 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < numProcesos; i++) {
         int hijo;
         hijo = fork();
-        if(hijo < 0) {
-            perror("Error al crear hijo");
+        if(hijo == -1) {
+            perror("Error al crear un hijo");
             exit(1);
         } else if(hijo == 0) {
-            char *info = {argv[0], argv[1], barrera0, barrera1, NULL};
+            char *info[] = {argv[0], argv[1], barrera0, barrera1};
             execvp("./Trabajo2/HIJO", info);
             exit(0);
         }
     }
 
-    //Esperamos 100 milisegundos por hijo creado para que todo esté listo para el combate
-    for(int i = 0; i < numProcesos; i++) {
-        usleep(100000);
+    //Iniciar rondas de ataque
+    int hijosVivos = numProcesos;
+    char K = 'k';
+    while(hijosVivos > 1) {
+        printf("Iniciando la rondad de ataques\n");
+        fflush(stdout);
+        //Avisar a los contendientes para que se preparen
+        for(int i = 0; i < hijosVivos; i++) {
+            write(barrera1[1], &K, sizeof(K));
+        }
+        for(int i = 0; i < hijosVivos; i++) {
+            //Recibir mensaje de los hijos vivos
+            if(msgrcv(mensajes, &mensaje, sizeof(mensaje), 1, 0) == -1) {
+                perror("Error en la comunicación con un hijo");
+            }
+        }
+        
+
+        
     }
-
     
-
 
 }
