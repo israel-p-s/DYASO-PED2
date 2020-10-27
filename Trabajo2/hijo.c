@@ -33,8 +33,8 @@ void indefenso() {
 int hijoAtacado(int *arrayLista, int numProcesos) {
     int res = 1 + (rand()%numProcesos);
     for(int i = 0; i < numProcesos; i++) {
-        if(arrayLista[i] != getpid() && arrayLista[i] == hijoAtacado) {
-            return hijoAtacado;
+        if(arrayLista[i] != getpid() && arrayLista[i] == res) {
+            return res;
         }
     }
 }
@@ -138,7 +138,7 @@ void main(int argc, char *argv[]) {
             arrayLista[i] = getpid();
         }
     }
-        abrirSem(sem);
+    abrirSem(sem);
 
     char K;
     while(1) {
@@ -146,7 +146,7 @@ void main(int argc, char *argv[]) {
         
         int decision = (rand()%2);
         if(decision == 0) {
-            if(signal(SIGUSR1, indefenso) == -1) {
+            if(signal(SIGUSR1, indefenso) == SIG_ERR) {
                 perror("Error al asignar indefenso");
                 exit(1);
             }
@@ -157,7 +157,7 @@ void main(int argc, char *argv[]) {
             kill(pidAtacado, SIGUSR1);
             usleep(100000);
         } else if(decision == 1) {
-            if(signal(SIGUSR1, defensa) == -1) {
+            if(signal(SIGUSR1, defensa) == SIG_ERR) {
                 perror("Error al asignar defensa");
                 exit(1);
             }

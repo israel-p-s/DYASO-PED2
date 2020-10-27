@@ -136,6 +136,27 @@ void main(int argc, char *argv[]) {
             if(msgrcv(mensajes, &mensaje, sizeof(mensaje), 1, 0) == -1) {
                 perror("Error en la comunicación con un hijo");
             }
+            
+            //Matar si el proceso a muerto
+            if(strcmp(mensaje.estado, "KO") == 0) {
+                waitpid(mensaje.pid, NULL, 0);
+                printf("Proceso %d FINALIZADO\n", mensaje.pid);
+                fflush(stdout);
+
+                //Sacamos el hijo muerto de la memoria compartida
+                cerrarSem(sem);
+                for(int i = 0; i < numProcesos; i++) {
+                    if(mensaje.pid == arrayLista[i]) {
+                        arrayLista[i] = 0;
+                    }
+                }
+                abrirSem(sem);
+            }
+        }
+
+        //Comprobamos cuantos hijos quedan vivos
+        for(int i = 0;  i < numProcesos; i++) {
+            
         }
         
 
