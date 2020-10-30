@@ -1,13 +1,16 @@
 //este archivo es el fichero fuente que al compilarse produce el ejecutable PADRE
 #include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 //FUNCIONES PARA EL SEMÁFORO
@@ -46,7 +49,7 @@ void cerrarSem(int idSem) {
 }
 
 //MÉTODO MAIN
-void main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
     //VARIABLES
     key_t clave;
@@ -54,7 +57,7 @@ void main(int argc, char *argv[]) {
     int lista;
     int numProcesos = strtol(argv[1], NULL, 10);
     int sem;
-    int barrera[4];
+    int barrera[2];
 
     //Crear clave asociada al ejecutable
     clave = ftok(argv[0], 'X');
@@ -109,8 +112,7 @@ void main(int argc, char *argv[]) {
 
     //Crear N hijos
     for(int i = 0; i < numProcesos; i++) {
-        int hijo;
-        hijo = fork();
+        int hijo = fork();
         if(hijo == -1) {
             perror("Error al crear un hijo");
             exit(1);
@@ -125,13 +127,14 @@ void main(int argc, char *argv[]) {
     int hijosVivos = numProcesos;
     char K = 'k';
     while(hijosVivos > 1) {
-        printf("Iniciando la rondad de ataques\n");
+        printf("Iniciando la ronda de ataques\n");
         fflush(stdout);
         //Avisar a los contendientes para que se preparen
         for(int i = 0; i < hijosVivos; i++) {
-            write(barrera1[1], &K, sizeof(K));
+            write(barrera[1], &K, sizeof(K));
         }
         for(int i = 0; i < hijosVivos; i++) {
+            
             //Recibir mensaje de los hijos vivos
             if(msgrcv(mensajes, &mensaje, sizeof(mensaje), 1, 0) == -1) {
                 perror("Error en la comunicación con un hijo");
@@ -155,13 +158,43 @@ void main(int argc, char *argv[]) {
         }
 
         //Comprobamos cuantos hijos quedan vivos
+        int vivosActuales = 0;
         for(int i = 0;  i < numProcesos; i++) {
-            
+            if(arrayLista[i] > 0) {
+                vivosActuales++;
+            }
         }
-        
-
-        
+        hijosVivos = vivosActuales;
+        printf("Finalizando la rondad de ataques\n");
+        fflush(stdout);
     }
     
+    //Accedemos al fichero FIFO resultado
+    FILE *resultadoFile;
+    resultadoFile = fopen("resultado", "a");
 
+    if(hijosVivos == 1) {
+        for(int i = 0; i < numProcesos; i++) {
+            kill(arrayLista[i], SIGTERM);
+            waitpid(arrayLista[i], NULL, 0);
+            fprintf(resultadoFile, "El hijo %d ha ganao", arrayLista[i]);
+            fflush(stdout);
+        }
+    } else {
+        fprintf(resultadoFile, "Empate");
+        fflush(stdout);
+    }
+
+    //Cerrar el semáforo
+    semctl(sem, IPC_RMID, 0);
+    //Cerrar la cola de mensajes
+    msgctl(mensajes, IPC_RMID,0);
+    shmdt(arrayLista);
+    //Cerrar la memoria compartida
+    shmctl(lista, IPC_RMID, 0);
+    //Cerramos la tubería
+    close(barrera[0]);
+    close(barrera[1]);
+
+    return 0;
 }

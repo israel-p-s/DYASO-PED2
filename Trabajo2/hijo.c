@@ -75,15 +75,14 @@ void cerrarSem(int idSem) {
 }
 
 //MÉTODO MAIN
-void main(int argc, char *argv[]) {
-    
+int main(int argc, char *argv[]) {
     //VARIABLES
     key_t clave;
     int mensajes;
     int lista;
     int numProcesos = atoi(argv[1]);
     int sem;
-    int barrera[4];
+    int barrera[2];
 
     srand(getpid());
 
@@ -172,5 +171,5 @@ void main(int argc, char *argv[]) {
             exit(1);
         }
     }
-
+    return 0;
 }
