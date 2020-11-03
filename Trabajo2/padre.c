@@ -14,38 +14,37 @@
 
 ///MÉTODOS AUXILIARES PARA EL SEMÁFORO
 //Inicializar el semáforo    
-int init_sem(int semid, short valor) {
+int initSem(int semid, short valor) {
     short sem_array[1];
     sem_array[0] = valor;
     if(semctl(semid, 0, SETALL, sem_array) == -1) {
-        perror("Error semctl");
+        perror("Error en initSem");
         return -1;
     }
     return 0;
 }
 
 //Semáforo cerrado
-int wait_sem(int semid) {
+int waitSem(int semid) {
     struct sembuf op[1];
     op[0].sem_num = 0;
     op[0].sem_op = -1;
     op[0].sem_flg = 0;
     if(semop(semid, op, 1) == -1) {
-        perror("Error semop:");
+        perror("Error en waitSem");
         return -1;
     }
     return 0;
 }
 
 //Semáforo abierto
-int signal_sem(int semid) {
+int signalSem(int semid) {
     struct sembuf op[1];
     op[0].sem_num = 0;
     op[0].sem_op = 1;
     op[0].sem_flg = 0;
-
     if(semop(semid, op, 1) == -1) {
-        perror("Error semop:");
+        perror("Error en signalSem");
         return -1;
     }
     return 0;
@@ -53,6 +52,9 @@ int signal_sem(int semid) {
 
 //MÉTODO MAIN
 int main(int argc, char *argv[]) {
+
+    printf("   >>INICIO DEL MÉTODO MAIN DEL PADRE\n\n");
+    fflush(stdout);
 
     //VARIABLES GLOBALES
     key_t llave;
@@ -66,59 +68,62 @@ int main(int argc, char *argv[]) {
     struct {
         long tipo;
         int pid;
-        char estado[4];
+        char estado[3];
     } mensaje;
     
 
     //Creamos una clave asociada al fichero ejecutable
     if((llave = ftok(argv[0], 'X')) == -1) {
-        perror("ftok");
+        perror("Error al crear la clave asociada al fichero ejecutable");
         exit(1);
     }
-
-    printf("ftok: %d \n", llave);
+    printf("Creada la clave asociado al fichero con ID: %d \n", llave);
     fflush(stdout);
 
     //Creamos una cola de mensajes
     mensajes = msgget(llave, IPC_CREAT | 0600);
     if (mensajes == -1) {
-        perror("semid");
+        perror("Error al crear la cola de mensajes");
         exit(2);
     }
+    //Calculamos el tamaño de cada mensaje
     int longitud = sizeof(mensaje) - sizeof(mensaje.tipo);
+    printf("Creada la cola de mensajes\n");
+    fflush(stdout);
 
     //Creamos la región de memoria compartida
     lista = shmget(llave, nPIDs*sizeof(int), IPC_CREAT | 0600);
     if(lista == -1) {
-        perror("shmget");
+        perror("Error al crear la región de memoria compartida");
         exit(2);
     }
-
     //Asignamos al array el puntero a la memoria compartida
     int *array = shmat(lista, 0, 0);
+    printf("Creada la región de memoria compartida lista\n");
+    fflush(stdout);
 
     //Creamos el semáforo
     sem = semget(llave, 1, IPC_CREAT | 0600);
     if(sem == -1) {
-        perror("semget");
+        perror("Error al crear el semáforo sem");
         exit(1);
     }
-
+    printf("Creado el semáforo sem\n");
+    fflush(stdout);
     //Inicializar el semáforo
-    init_sem(sem, 1);
+    initSem(sem, 1);
 
     //Creamos la tubería
     if(pipe(barrera) == -1) {
-        perror("pipe");
+        perror("Error al crear la tubería");
         exit(-1);
     }
-
-    printf("array: %d\n  sem: %d \n", array, sem);
+    printf("Creado la tubería barrera\n\n");
     fflush(stdout);
 
     //Convertimos la tubería para que se le pueda pasar como parametro a los hijos
-    char barrera0[10];
-    char barrera1[10];
+    char barrera0[2];
+    char barrera1[2];
     sprintf(barrera0, "%d", barrera[0]);
     sprintf(barrera1, "%d", barrera[1]);
 
@@ -135,28 +140,32 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    int fin = 1;
-    while(fin == 1)
-    {
-        fin = 0;
-        for(int i = 0; i < nPIDs; i++)
-            if(array[i] == 0) fin = 1;
-                usleep(100000);
+    //Para prevenir problemas, esperaremos 100ms por cada hijo, para asegurarnos de que todos han entrado en el array
+    for(int i = 0; i < nPIDs; i++) {
+        usleep(100000);
+        printf("Empezamos en: %.1f segundos \n", (((float)nPIDs-i)/10));
+        fflush(stdout);
     }
-    
-    // Mostramos por pantalla los PIDs creados inicialmente.
-    printf("*************************\n");
-    printf("*     PIDs INICIALES    *\n");
-    for(int i = 0; i < nPIDs; i++) printf("* pid[%d] = %d\t\t*\n", i, array[i]);
-    printf("*************************\n\n");
+
+    printf("\n----------------------------------------------------------------------------------------------------------\n");
+    printf("   >>HIJOS EN LA CONTIENDA\n");
     fflush(stdout);
+    for(int i = 0; i < nPIDs; i++) {
+        if(array[i] > 0) {
+            //Imprimimos los hijos vivos
+            printf("HIJO %d: \t\t\t %d \n", (i+1), array[i]);
+        }
+    }
 
     //Empezamos con los combates
     int pidsActivos = nPIDs;
-    char K = 'a';
+    char K = 'k';
     while(pidsActivos > 1) {
-        printf("Iniciando ronda de ataques \n");
+
+        printf("\n----------------------------------------------------------------------------------------------------------\n");
+        printf("Iniciando ronda de ataques\n\n");
         fflush(stdout);
+
         for(int i = 0; i < pidsActivos; i++) {
             //Enviamos K bytes por la barrera
             write(barrera[1], &K, sizeof(K));
@@ -165,7 +174,7 @@ int main(int argc, char *argv[]) {
         for(int i = 0; i < pidsActivos; i++) {
             //Recibimos el mensaje de los hijos
             if(msgrcv(mensajes, &mensaje, longitud, 1, 0) == -1) {
-                perror("msgrcv");
+                perror("Error recibiendo un mensaje");
                 exit(3);
             }
 
@@ -176,15 +185,18 @@ int main(int argc, char *argv[]) {
                 //Esperamos a que el hijo muera
                 waitpid(mensaje.pid, NULL, 0);
                 //Sacamos al hijo muerto del array
-                wait_sem(sem);
+                waitSem(sem);
                 for(int i = 0; i < nPIDs; i ++) {
                     if(mensaje.pid == array[i]) {
                         array[i] = 0;
                     }
                 }
-                signal_sem(sem);
+                signalSem(sem);
+                printf("  >>HIJO %d MUERTO\n", mensaje.pid);
+                fflush(stdout);
             }
         }
+
         //Actualizamos el número de pids activos
         int res = 0;
         for(int i = 0; i < nPIDs; i++) {
@@ -193,8 +205,28 @@ int main(int argc, char *argv[]) {
             }
         }
         pidsActivos = res;
-        printf("Finalizando la ronda de ataques \n");
+        printf("\nFinalizando la ronda de ataques\n");
         fflush(stdout);
+
+        int quedanVivos = 0;
+        for(int i = 0; i < nPIDs; i++) {
+            if(array[i] > 0) {
+                quedanVivos = 1;
+            }
+        }
+
+        if(quedanVivos == 1) {
+            printf("\n  >>QUEDAN VIVOS LOS HIJOS\n"); 
+            fflush(stdout);
+            for(int i = 0; i < nPIDs; i++) {
+                if(array[i] > 0) {
+                    //Imprimimos los hijos vivos
+                    printf("HIJO %d: \t\t\t %d \n", (i+1), array[i]);
+                    fflush(stdout);
+                }
+                
+            }
+        }
     } 
 
     //Abrimos el fichero FIFO resultado
@@ -210,14 +242,14 @@ int main(int argc, char *argv[]) {
                 //Esperamos a que el hijo muera
                 waitpid(mensaje.pid, NULL, 0);
                 //Imprimimos en el fichero al ganador
-                fprintf(ficheroResulado, "El hijo %d ha ganadao", array[i]);
-            } else {
-                //Imprimimos en el fichero el empate
-                fprintf(ficheroResulado, "Empate");
+                fprintf(ficheroResulado, "\n\nEl hijo %d ha ganadao\n\n", array[i]);
             }
         }
+    } else {
+        //Imprimimos en el fichero el empate
+        fprintf(ficheroResulado, "\n\nEmpate\n\n");
     }
-
+        
     //Cerramos la cola de mensajes
     msgctl(mensajes, IPC_RMID, 0);
 
