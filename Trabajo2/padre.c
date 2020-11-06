@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < nPIDs; i++) {
         int pidHijo;
         if((pidHijo = fork()) == -1) {
-            perror("fork");
+            perror("Error al ejecutar el fork");
             exit(-1);
         } else if(pidHijo == 0) {
             char *info[] = {argv[0], argv[1], barrera0, barrera1, NULL};
@@ -208,6 +208,7 @@ int main(int argc, char *argv[]) {
         printf("\nFinalizando la ronda de ataques\n");
         fflush(stdout);
 
+        //Comprobamos si existen hijos vivos
         int quedanVivos = 0;
         for(int i = 0; i < nPIDs; i++) {
             if(array[i] > 0) {
