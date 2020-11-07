@@ -232,9 +232,9 @@ int main(int argc, char *argv[]) {
         for(int i = 0; i < nPIDs; i++) {
             if(array[i] > 0) {
                 //Matamos el PID que queda
-                kill(mensaje.pid, SIGTERM);
+                kill(array[i], SIGTERM);
                 //Esperamos a que el hijo muera
-                waitpid(mensaje.pid, NULL, 0);
+                waitpid(array[i], NULL, 0);
                 //Imprimimos en el fichero al ganador
                 fprintf(ficheroResulado, "\n\nEl hijo %d ha ganadao\n\n", array[i]);
             }
