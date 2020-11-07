@@ -158,20 +158,20 @@ int main(int argc, char *argv[]) {
     }
 
     //Empezamos con los combates
-    int pidsActivos = nPIDs;
+    int hijosVivos = nPIDs;
     char K = 'k';
-    while(pidsActivos > 1) {
+    while(hijosVivos > 1) {
 
         printf("\n--------------------------------------------------------------------------------\n");
         printf("Iniciando ronda de ataques\n\n");
         fflush(stdout);
 
-        for(int i = 0; i < pidsActivos; i++) {
+        for(int i = 0; i < hijosVivos; i++) {
             //Enviamos K bytes por la barrera
             write(barrera[1], &K, sizeof(K));
         }
 
-        for(int i = 0; i < pidsActivos; i++) {
+        for(int i = 0; i < hijosVivos; i++) {
             //Recibimos el mensaje de los hijos
             if(msgrcv(mensajes, &mensaje, longitud, 1, 0) == -1) {
                 perror("Error recibiendo un mensaje");
@@ -204,19 +204,12 @@ int main(int argc, char *argv[]) {
                 res++;
             }
         }
-        pidsActivos = res;
+        hijosVivos = res;
         printf("\nFinalizando la ronda de ataques\n");
         fflush(stdout);
-
-        //Comprobamos si existen hijos vivos
-        int quedanVivos = 0;
-        for(int i = 0; i < nPIDs; i++) {
-            if(array[i] > 0) {
-                quedanVivos = 1;
-            }
-        }
-
-        if(quedanVivos == 1) {
+        
+        //Imprimimos los hijos que quedan vivos
+        if(hijosVivos > 0) {
             printf("\n  >>QUEDAN VIVOS LOS HIJOS\n"); 
             fflush(stdout);
             for(int i = 0; i < nPIDs; i++) {
@@ -235,7 +228,7 @@ int main(int argc, char *argv[]) {
     ficheroResulado = fopen("resultado", "a");
 
     //Comprobamos si tenemos un ganador o ha sido empate
-    if(pidsActivos == 1) {
+    if(hijosVivos == 1) {
         for(int i = 0; i < nPIDs; i++) {
             if(array[i] > 0) {
                 //Matamos el PID que queda
