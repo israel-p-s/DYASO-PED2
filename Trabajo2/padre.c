@@ -258,8 +258,7 @@ int main(int argc, char *argv[]) {
     close(barrera[0]);
     close(barrera[1]);
 
-    //Comprobamos que los recursos hayan sido cerrados
-    system("ipcrm -a");  
+    //Comprobamos que las colas de mensajes y los semáforos se han cerrado
     system("ipcs -qs");
 
     return 0;
