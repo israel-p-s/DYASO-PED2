@@ -52,17 +52,6 @@ int eligePid(int *array, int nPIDs) {
 }
 
 ///MÉTODOS AUXILIARES PARA EL SEMÁFORO
-//Inicializar el semáforo    
-int initSem(int semid, short valor) {
-    short sem_array[1];
-    sem_array[0] = valor;
-    if(semctl(semid, 0, SETALL, sem_array) == -1) {
-        perror("Error en initSem");
-        return -1;
-    }
-    return 0;
-}
-
 //Semáforo cerrado
 int waitSem(int semid) {
     struct sembuf op[1];
