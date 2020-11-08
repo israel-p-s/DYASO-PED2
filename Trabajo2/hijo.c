@@ -118,7 +118,6 @@ int main(int argc, char *argv[]) {
         perror("Error al crear la región de memoria compartida");
         exit(2);
     }
-
     //Asignamos al array el puntero a la memoria compartida
     int *array = shmat(lista, 0, 0);
 
