@@ -140,8 +140,12 @@ int main(int argc, char *argv[]) {
     char K;
     while(1) {
 
+        //Leemos k bytes de la tubería
         read(barrera[0], &K, sizeof(K));
+        
+        //Se elige aleatoriamente si el proceso ataca o defiende
         int decision = rand() % 2;
+        
         //Ataca
         if(decision == 0) {
             if(signal(SIGUSR1, indefenso) == SIG_ERR) {
